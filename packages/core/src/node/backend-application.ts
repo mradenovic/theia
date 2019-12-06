@@ -101,6 +101,8 @@ export class BackendApplication {
     @inject(ApplicationPackage)
     protected readonly applicationPackage: ApplicationPackage;
 
+    private _performanceObserver: PerformanceObserver;
+
     constructor(
         @inject(ContributionProvider) @named(BackendApplicationContribution)
         protected readonly contributionsProvider: ContributionProvider<BackendApplicationContribution>,
@@ -123,7 +125,7 @@ export class BackendApplication {
         process.on('SIGTERM', () => process.exit(0));
 
         // Create performance observer
-        new PerformanceObserver(list => {
+        this._performanceObserver = new PerformanceObserver(list => {
             for (const item of list.getEntries()) {
                 const contribution = `Backend ${item.name}`;
                 if (item.duration > TIMER_WARNING_THRESHOLD) {
@@ -132,7 +134,8 @@ export class BackendApplication {
                     console.debug(`${contribution} took: ${item.duration.toFixed(1)} ms`);
                 }
             }
-        }).observe({
+        });
+        this._performanceObserver.observe({
             entryTypes: ['measure']
         });
 
@@ -248,6 +251,7 @@ export class BackendApplication {
     }
 
     protected onStop(): void {
+        this._performanceObserver.disconnect();
         console.info('>>> Stopping backend contributions...');
         for (const contrib of this.contributionsProvider.getContributions()) {
             if (contrib.onStop) {
